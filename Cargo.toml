@@ -2,6 +2,9 @@
 name = "paddle-keys"
 version = "0.1.0"
 edition = "2024"
+description = "Use the 8BitDo Ultimate 2 Wireless back paddles as F13-F16 keys while staying in XInput mode"
+license = "MIT"
+repository = "https://github.com/xplodingeggo/paddle-keys"
 
 [dependencies]
 hidapi = "2"
