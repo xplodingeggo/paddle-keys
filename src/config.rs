@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code)] // config::load unused until Task 5
 
 use std::path::{Path, PathBuf};
 

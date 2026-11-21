@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use crate::config::{Bindings, KeySpec};
 use crate::decode::{Paddle, Paddles};
 use windows::Win32::UI::Input::KeyboardAndMouse::{

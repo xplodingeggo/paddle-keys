@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Paddle {
@@ -39,11 +38,15 @@ pub const POLL: [u8; 64] = {
 
 const REPLY_HEADER: [u8; 7] = [0x02, 0x04, 0x04, 0x00, 0x03, 0x00, 0x0c];
 
-pub fn parse_reply(buf: &[u8]) -> Option<Paddles> {
+pub fn mask_of(buf: &[u8]) -> Option<u32> {
     if !buf.starts_with(&REPLY_HEADER) {
         return None;
     }
-    let mask = u32::from_le_bytes(buf.get(18..22)?.try_into().ok()?);
+    Some(u32::from_le_bytes(buf.get(18..22)?.try_into().ok()?))
+}
+
+pub fn parse_reply(buf: &[u8]) -> Option<Paddles> {
+    let mask = mask_of(buf)?;
     Some(Paddles {
         l4: mask & 0x00200000 != 0,
         r4: mask & 0x40000000 != 0,
