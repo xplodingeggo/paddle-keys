@@ -1,6 +1,4 @@
-#![allow(dead_code)] // config::load unused until Task 5
-
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde::Deserialize;
 
@@ -108,10 +106,10 @@ fn key_code(t: &str) -> Result<u16, String> {
     if t.len() == 1 && t.as_bytes()[0].is_ascii_alphanumeric() {
         return Ok(t.as_bytes()[0].to_ascii_uppercase() as u16);
     }
-    if let Some(n) = lower.strip_prefix('f').and_then(|n| n.parse::<u16>().ok()) {
-        if (1..=24).contains(&n) {
-            return Ok(0x6F + n);
-        }
+    if let Some(n) = lower.strip_prefix('f').and_then(|n| n.parse::<u16>().ok())
+        && (1..=24).contains(&n)
+    {
+        return Ok(0x6F + n);
     }
     Err(format!("unknown key {t:?}"))
 }
@@ -150,7 +148,8 @@ fn from_toml(text: &str) -> Bindings {
     b
 }
 
-fn test_dir(name: &str) -> PathBuf {
+#[cfg(test)]
+fn test_dir(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("paddle-keys-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
