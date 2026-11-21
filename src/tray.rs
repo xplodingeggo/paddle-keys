@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use tao::event::{Event, StartCause};
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
 use tray_icon::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem};
-use tray_icon::{Icon, TrayIconBuilder};
+use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
 
 use crate::autostart;
 
@@ -27,24 +27,24 @@ pub fn run(paused: Arc<AtomicBool>, stop: Arc<AtomicBool>, poller: JoinHandle<()
     let event_loop = EventLoopBuilder::new().build();
     let pause_i = CheckMenuItem::new("Paused", true, false, None);
     let auto_i = CheckMenuItem::new("Start with Windows", true, autostart::is_enabled(), None);
-    let cfg_i = MenuItem::new("Open config", true, None);
+    let cfg_i = MenuItem::new("Open config (restart to apply)", true, None);
     let quit_i = MenuItem::new("Quit", true, None);
     let menu = Menu::new();
     menu.append_items(&[&pause_i, &auto_i, &cfg_i, &quit_i]).expect("menu");
-    let _tray = TrayIconBuilder::new()
+    let mut tray: Option<TrayIcon> = Some(TrayIconBuilder::new()
         .with_menu(Box::new(menu))
         .with_tooltip("paddle-keys")
         .with_icon(icon())
         .build()
-        .expect("tray icon");
+        .expect("tray icon"));
     let mut poller = Some(poller);
     let rx = MenuEvent::receiver();
 
     event_loop.run(move |event, _, flow| {
-        *flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(100));
         if !matches!(event, Event::NewEvents(StartCause::ResumeTimeReached { .. } | StartCause::Init)) {
             return;
         }
+        *flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(100));
         while let Ok(ev) = rx.try_recv() {
             if ev.id == pause_i.id() {
                 paused.store(pause_i.is_checked(), Ordering::Relaxed);
@@ -60,6 +60,7 @@ pub fn run(paused: Arc<AtomicBool>, stop: Arc<AtomicBool>, poller: JoinHandle<()
                 if let Some(h) = poller.take() {
                     let _ = h.join();
                 }
+                drop(tray.take()); // process::exit skips destructors; drop removes the icon
                 *flow = ControlFlow::Exit;
             }
         }
