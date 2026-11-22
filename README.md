@@ -66,7 +66,8 @@ Steam reads Xbox controllers through Valve's Xbox Extended Feature Support drive
 **Use it**
 
 1. Tray menu > **Steam Elite mode** > **Enabled**.
-2. Turn the controller off and on (or start Steam after `paddle-keys`). The status line in the submenu shows what is missing, or `active, Steam sees an Elite 2`.
+2. Turn the controller off and on. Steam picks up controllers within seconds of starting, before the hook is in, so this is also needed after Steam restarts. The status line in the submenu shows what is missing, or that Steam sees an Elite 2.
+3. Steam lists one controller, the Xbox Elite 2. While the mode is on, Steam ignores the 8BitDo's own entries.
 
 | Paddle | Elite paddle |
 |--------|--------------|
@@ -88,6 +89,7 @@ Steam reads Xbox controllers through Valve's Xbox Extended Feature Support drive
 - Games that turn Steam Input off get the plain Xbox controller without paddles. In the default mode the paddles then do nothing; pick **Keys only** for those games.
 - The hook stays loaded until Steam exits. Turning the mode off, or quitting `paddle-keys`, stops it from taking over newly connected controllers and releases the paddles; a controller that is already taken over stays an Elite 2 until you turn it off and on.
 - Triggers keep the controller's 8-bit resolution (scaled to the Elite's 10-bit range).
+- Only the Ultimate 2 Wireless in XInput mode is supported. Want another controller? See [docs/ADDING-CONTROLLERS.md](docs/ADDING-CONTROLLERS.md).
 
 ## Tested on
 
@@ -100,7 +102,7 @@ Steam reads Xbox controllers through Valve's Xbox Extended Feature Support drive
 
 ## How it works
 
-See [docs/PROTOCOL.md](docs/PROTOCOL.md). The app sends one read-only command, nothing else, to the controller.
+See [docs/PROTOCOL.md](docs/PROTOCOL.md) for the controller and [docs/STEAM.md](docs/STEAM.md) for Steam Elite mode. The app sends one read-only command, nothing else, to the controller. Diagnostic scripts used during the research are in [tools/](tools/).
 
 ## Build
 
