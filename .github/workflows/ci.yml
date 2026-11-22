@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main, linux]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  linux:
+    # 22.04 keeps the glibc requirement low (2.35) for the release build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxdo-dev libudev-dev libayatana-appindicator3-dev gcc-multilib
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: i686-unknown-linux-gnu
+      - run: cargo test --workspace
+      - run: cargo test -p paddle-keys-steam --target i686-unknown-linux-gnu
+      - run: cargo build --release --workspace
+      - run: cargo build --release -p paddle-keys-steam --target i686-unknown-linux-gnu
+      - name: Package
+        run: |
+          v=dev
+          if [ "$GITHUB_REF_TYPE" = tag ]; then v=${GITHUB_REF_NAME#v}; fi
+          d=paddle-keys-$v-linux-x86_64
+          mkdir "$d"
+          cp target/release/paddle-keys "$d/"
+          cp target/release/libpaddle_keys_steam.so "$d/libpaddle_keys_steam64.so"
+          cp target/i686-unknown-linux-gnu/release/libpaddle_keys_steam.so "$d/libpaddle_keys_steam32.so"
+          cp README.md LICENSE "$d/"
+          tar czf "$d.tar.gz" "$d"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: "*.tar.gz"
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --workspace
+      - run: cargo build --release --workspace
