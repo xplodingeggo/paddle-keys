@@ -18,6 +18,7 @@ Right now both halves are written for exactly one device, `2DC8:310B`. Adding a 
 | `steam-hook/src/lib.rs` `patch_iface` | source class `ff 5d 01` |
 | `steam-hook/src/lib.rs` `sync_ignore` | ignore list `0x2DC8/0x310B` |
 | `steam-hook/src/gip.rs` `Pad360` | the Xbox 360 report layout |
+| `steam-hook/src/linux.rs` `VID`/`PID`, `PADDLE_KEYS` | Linux: which evdev node is taken over, and the paddle key codes |
 
 ## Part 1: find the extra buttons
 
@@ -34,6 +35,8 @@ Then add the device to `device.rs`/`decode.rs` with a unit test per bit, like `d
 ## Part 2: Steam presentation
 
 ### Is it possible for this pad?
+
+On Linux see [STEAM-LINUX.md](STEAM-LINUX.md): any pad that Steam reads through SDL's evdev backend (GUID driver byte `00` in `controller.txt`) can be presented the same way, with no protocol translation. The rest of this section is about Windows.
 
 - The pad must reach Steam through `steamxbox.sys`, which means USB with an Xbox 360 or Xbox One interface. Check `Steam\logs\controller.txt` and `tools/sdl_devices.py`: you want an SDL entry whose path starts with `nvagipman:`. Bluetooth pads, DInput-mode pads and pads Steam reads through plain HID do **not** go through this path; for those, the hook has nothing to rewrite.
 - If the pad already reports GIP (`ff/47/d0`), you may only need the VID/PID swap and paddle bits. If it reports 360 (`ff/5d/01`), you need the full translation, exactly like the 8BitDo.
