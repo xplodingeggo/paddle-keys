@@ -320,9 +320,11 @@ impl EncodeWideNul for std::ffi::OsStr {
 /// A loaded DLL is locked until Steam exits, so Steam gets a per-build copy and updates never fail.
 fn staged_dll() -> Option<PathBuf> {
     let src = std::env::current_exe().ok()?.with_file_name(DLL);
-    let len = std::fs::metadata(&src).ok()?.len();
+    // keyed on content: rebuilds often keep the same padded PE size, and a loaded copy can't be overwritten
+    let mut h = std::hash::DefaultHasher::new();
+    std::hash::Hasher::write(&mut h, &std::fs::read(&src).ok()?);
     let dir = PathBuf::from(std::env::var_os("LOCALAPPDATA")?).join("paddle-keys");
-    let dst = dir.join(format!("paddle_keys_steam-{}-{len}.dll", env!("CARGO_PKG_VERSION")));
+    let dst = dir.join(format!("paddle_keys_steam-{}-{:016x}.dll", env!("CARGO_PKG_VERSION"), std::hash::Hasher::finish(&h)));
     if !dst.exists() {
         std::fs::create_dir_all(&dir).ok()?;
         std::fs::copy(&src, &dst).ok()?;

@@ -5,6 +5,8 @@
 //!  - 0x2ae80c interface reply: class ff/5d/01 (Xbox 360) -> ff/47/d0 (GIP); endpoints untouched
 //!  - 0x2aec04 reads: 360 reports -> GIP input with the paddles from paddle-keys, plus hello and guide
 //!  - 0x2aac08 writes: GIP rumble -> 360 rumble; other GIP commands never reach the pad
+//!  - while enabled, SDL ignores 2DC8:310B, so the pad's own XInput and DirectInput entries don't
+//!    list it again next to the Elite (SDL only hides those when a HIDAPI device shares their VID/PID)
 //! Everything is keyed to the pad's 8-byte sideband id, so other controllers are never touched.
 
 pub mod gip;
@@ -12,7 +14,7 @@ pub mod shm;
 
 use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard};
 
 use windows_sys::Win32::Foundation::{
@@ -38,11 +40,14 @@ type DeviceIoControlFn =
     unsafe extern "system" fn(HANDLE, u32, *const c_void, u32, *mut c_void, u32, *mut u32, *mut OVERLAPPED) -> BOOL;
 type GetOverlappedResultFn = unsafe extern "system" fn(HANDLE, *const OVERLAPPED, *mut u32, BOOL) -> BOOL;
 type SetHintWithPriorityFn = unsafe extern "C" fn(*const u8, *const u8, i32) -> bool;
+type ResetHintFn = unsafe extern "C" fn(*const u8) -> bool;
 
 static ORIG_DIOC: AtomicUsize = AtomicUsize::new(0);
 static ORIG_GOR: AtomicUsize = AtomicUsize::new(0);
 static SHM: AtomicPtr<Shared> = AtomicPtr::new(std::ptr::null_mut());
 static HINT_SET: AtomicBool = AtomicBool::new(false);
+/// 0 unset, 1 ignoring 2DC8:310B, 2 not ignoring
+static IGNORING: AtomicU8 = AtomicU8::new(0);
 
 #[derive(Clone, Copy, PartialEq)]
 enum Kind {
@@ -130,6 +135,33 @@ fn ensure_hint() {
     }
 }
 
+/// Follows the enabled flag. Steam sets no ignore list of its own, so the hint is ours to reset.
+fn sync_ignore() {
+    let want = if enabled() { 1 } else { 2 };
+    if IGNORING.load(Ordering::Relaxed) == want {
+        return;
+    }
+    unsafe {
+        let sdl = GetModuleHandleW(wide("SDL3.dll").as_ptr());
+        if sdl.is_null() {
+            return;
+        }
+        let name = c"SDL_GAMECONTROLLER_IGNORE_DEVICES".as_ptr().cast();
+        let done = if want == 1 {
+            let Some(f) = GetProcAddress(sdl, c"SDL_SetHintWithPriority".as_ptr().cast()) else { return };
+            let set: SetHintWithPriorityFn = std::mem::transmute(f);
+            set(name, c"0x2DC8/0x310B".as_ptr().cast(), 2)
+        } else {
+            let Some(f) = GetProcAddress(sdl, c"SDL_ResetHint".as_ptr().cast()) else { return };
+            let reset: ResetHintFn = std::mem::transmute(f);
+            reset(name)
+        };
+        if done {
+            IGNORING.store(want, Ordering::Relaxed);
+        }
+    }
+}
+
 fn read_id(buf: &[u8]) -> Option<[u8; 8]> {
     buf.get(..8)?.try_into().ok()
 }
@@ -150,6 +182,7 @@ fn patch_info(buf: &mut [u8]) {
             return;
         }
         ensure_hint();
+        sync_ignore();
         pads.push(Pad::new(id));
     }
     buf[8..12].copy_from_slice(&[0x5e, 0x04, 0x00, 0x0b]);
@@ -380,6 +413,7 @@ fn init() {
         loop {
             map_shared();
             ensure_hint();
+            sync_ignore();
             if let Some(s) = shared() {
                 s.hook_pid.store(GetCurrentProcessId(), Ordering::Relaxed);
             }

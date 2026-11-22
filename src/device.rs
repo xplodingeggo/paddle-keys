@@ -42,15 +42,24 @@ fn poll_once(dev: &HidDevice) -> Result<Poll, String> {
 
 pub fn run(mut out: Output, stop: Arc<AtomicBool>, paused: Arc<AtomicBool>, steam: Arc<State>) {
     let mut was_paused = false;
+    let mut connected = false;
     while !stop.load(Ordering::Relaxed) {
         let dev = match open() {
-            Ok(d) => d,
+            Ok(d) => {
+                connected = true;
+                d
+            }
             Err(_) => {
+                // gone from the system, so Steam lost it too; once, so a late bump can't follow Steam's takeover
+                if std::mem::take(&mut connected) {
+                    steam.lost();
+                }
                 std::thread::sleep(Duration::from_secs(1));
                 continue;
             }
         };
         let mut timeouts = 0;
+        let mut gone = false;
         while !stop.load(Ordering::Relaxed) {
             if paused.load(Ordering::Relaxed) {
                 if !was_paused {
@@ -76,12 +85,21 @@ pub fn run(mut out: Output, stop: Arc<AtomicBool>, paused: Arc<AtomicBool>, stea
                         break;
                     }
                 }
-                Err(_) => break,
+                Err(_) => {
+                    gone = true;
+                    break;
+                }
             }
             std::thread::sleep(Duration::from_millis(4));
         }
         out.release_all();
-        steam.lost();
+        // Timeouts alone don't count: the vendor channel can stall right after Steam took the pad over.
+        if gone {
+            connected = false;
+            steam.lost();
+        } else {
+            steam.route(Paddles::default());
+        }
         drop(dev);
         std::thread::sleep(Duration::from_secs(1));
     }
