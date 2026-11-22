@@ -95,11 +95,15 @@ Steam reads Xbox controllers through Valve's Xbox Extended Feature Support drive
 
 ## Linux
 
-The same app and the same Steam Elite mode, built for Linux. Nothing here needs root at runtime.
+The same app and the same Steam Elite mode as on Windows. Nothing here needs root at runtime.
 
 ### Install
 
-**Arch Linux** (packages the prebuilt release binaries into a pacman package; nothing is compiled, so no Rust needed):
+Pick one.
+
+#### Arch Linux
+
+Packages the prebuilt release into a pacman package. Nothing is compiled, so you don't need Rust.
 
 ```
 mkdir paddle-keys-pkg && cd paddle-keys-pkg
@@ -109,26 +113,67 @@ done
 makepkg -si
 ```
 
-`makepkg` downloads the prebuilt release tarball from GitHub, checks its checksum and packs `paddle-keys-bin` from it; `-si` then installs it with pacman (it asks for your password) and pulls in any missing dependencies. Or clone the repo and run `makepkg -si` inside `packaging/arch`. It installs the app, the hooks, the udev rule and the menu entry. Remove it with `sudo pacman -R paddle-keys-bin`. After installing, replug or power-cycle the controller once so the udev rule applies, run `paddle-keys --probe 5`, then start `paddle-keys`.
+- `makepkg` downloads the release from GitHub and checks its checksum. `-si` installs it with pacman and pulls in missing dependencies.
+- It installs the app, the Steam hooks, the udev rule and the menu entry.
+- Remove it with `sudo pacman -R paddle-keys-bin`.
 
-**Any distro:**
+#### Any distro
 
-1. Download `paddle-keys-<version>-linux-x86_64.tar.gz` from the [latest release](../../releases/latest), extract it and run `./install.sh`. It installs to `~/.local/opt/paddle-keys` (command `~/.local/bin/paddle-keys`), adds the app menu entry and offers to install the udev rule. `./install.sh --uninstall` removes everything again. Compare with `SHA256SUMS.txt` if you like. It needs glibc 2.35 or newer, GTK 3 and an AppIndicator library (Arch: `gtk3 libayatana-appindicator`; Debian/Ubuntu: `libgtk-3-0 libayatana-appindicator3-1`). Or build it yourself (see [Build](#build)).
-2. Access: paddle-keys needs read/write on the pad's vendor `hidraw` node (interface 2) and on `/dev/uinput`. The udev rule in the archive (`70-paddle-keys.rules`, installed by `install.sh` or the Arch package) grants both to the logged-in user. Check the pad with `paddle-keys --probe 5`.
-3. Close the 8BitDo Ultimate Software if you run it under Wine, for the same reason as on Windows.
-4. Run `paddle-keys`. The tray icon needs a StatusNotifier host (KDE, GNOME with the AppIndicator extension, waybar's `tray` module, ...). On Hyprland, start it with `exec-once = paddle-keys`; "Start on login" writes an XDG autostart entry, which Hyprland does not read.
+1. Download `paddle-keys-<version>-linux-x86_64.tar.gz` from the [latest release](../../releases/latest) and extract it.
+2. Run `./install.sh` in the extracted folder.
 
-Keys are sent through a virtual keyboard named `paddle-keys` (uinput). Under X11/Wayland, F13 to F24 often map to keysyms like `XF86Tools` rather than `F13`; apps that read raw key codes (games, Steam Input, `wev` shows both) see the right key.
+The script:
+- installs to `~/.local/opt/paddle-keys` and the command `~/.local/bin/paddle-keys`;
+- adds the app menu entry;
+- offers to install the udev rule.
+
+`./install.sh --uninstall` removes everything. Compare the download with `SHA256SUMS.txt` if you like. To build it yourself, see [Build](#build).
+
+**Requirements:** glibc 2.35 or newer, GTK 3 and an AppIndicator library.
+
+| Distro | Packages |
+|--------|----------|
+| Arch | `gtk3 libayatana-appindicator` |
+| Debian / Ubuntu | `libgtk-3-0 libayatana-appindicator3-1` |
+
+### First run
+
+1. **Power-cycle the controller** once after installing, so the udev rule applies. It must be in XInput mode.
+2. **Check it is found:** `paddle-keys --probe 5`, then press the paddles. Their names should print.
+3. **Start it:** `paddle-keys`. A tray icon appears; it needs a StatusNotifier host (KDE, GNOME with the AppIndicator extension, waybar's `tray` module, ...).
+4. **Autostart:** "Start on login" in the tray menu writes an XDG autostart entry. Hyprland doesn't read those, so add `exec-once = paddle-keys` instead.
+
+If the Wine version of the 8BitDo Ultimate Software is running, close it first. It talks to the same channel, as on Windows.
+
+#### Controller access
+
+paddle-keys needs read/write on the pad's vendor `hidraw` node (interface 2) and on `/dev/uinput`. The udev rule `70-paddle-keys.rules` grants both to the logged-in user. `install.sh` and the Arch package install it for you.
+
+#### Keys on Linux
+
+Keys are sent through a virtual keyboard named `paddle-keys` (uinput). F13 to F24 often map to keysyms like `XF86Tools` on X11 and Wayland instead of `F13`. Apps that read raw key codes (games, Steam Input) see the right key; `wev` shows both.
 
 ### Steam Elite mode on Linux
 
-Steam on Linux reads the pad through its bundled SDL3 and the kernel's `xpad` driver, not through a Valve driver. The hook is an `LD_AUDIT` module that Steam loads at start, the same way SLSsteam (via headcrab) is loaded. It only touches the calls Steam's `libSDL3` makes on the 8BitDo's gamepad node, and presents it as a wired Xbox Elite Series 2 the way `xpad` presents a real one, with the paddles as P1 to P4. Details: [docs/STEAM-LINUX.md](docs/STEAM-LINUX.md).
+Makes Steam see the controller as an Xbox Elite Series 2, with the paddles as P1 to P4. Off by default.
+
+**Set up**
 
 1. In Steam: **Settings > Controller**, turn on **Enable Steam Input for Xbox controllers**. No extra driver is needed on Linux.
-2. Tray menu > **Steam Elite mode** > **Enabled**, then **Install Steam hook (edits steam.sh)**. Or run `paddle-keys --install-steam-hook`. This adds the hook to the `LD_AUDIT` line in `~/.steam/steam/steam.sh` (headcrab's `INJECT_SLS` line if present, otherwise a new `export` after the shebang), marked `# paddle-keys`, after saving `steam.sh.paddle-keys.bak`. A read-only `steam.sh` stays read-only.
-3. Fully quit Steam (`steam -shutdown`) and start it again. Because the hook is in from the start, no controller power-cycle is needed.
+2. In the tray: **Steam Elite mode > Enabled**, then **Install Steam hook (edits steam.sh)**. Or run `paddle-keys --install-steam-hook`.
+3. Fully quit Steam (`steam -shutdown`) and start it again. No controller power-cycle is needed.
 
-`paddle-keys --remove-steam-hook` (or the tray item) takes it out again. Steam updates that replace a stock `steam.sh` drop the line; the status then says to install it again. Routing, status and the rules about safety are the same as on Windows, except that there is no injection into a running Steam: if Steam was started before the hook was installed, the status says to restart Steam.
+To undo it, use the tray item or run `paddle-keys --remove-steam-hook`.
+
+**Good to know**
+
+- The hook is added to the `LD_AUDIT` line in `~/.steam/steam/steam.sh`, the same way SLSsteam is loaded. If a headcrab `INJECT_SLS` line exists, the hook goes into it; otherwise a new `export` is added after the shebang. A backup is saved as `steam.sh.paddle-keys.bak` and a read-only `steam.sh` stays read-only.
+- It only changes what Steam's SDL3 sees of the 8BitDo's gamepad node. Games are not touched.
+- A Steam update that replaces `steam.sh` drops the line; the status then tells you to install it again.
+- Unlike on Windows, nothing is injected into a running Steam. If Steam was started before the hook was installed, the tray status says to restart Steam.
+- Routing and status work as on Windows.
+
+How it works: [docs/STEAM-LINUX.md](docs/STEAM-LINUX.md).
 
 ## Tested on
 
