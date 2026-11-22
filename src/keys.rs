@@ -1,5 +1,6 @@
 use crate::config::{Bindings, KeySpec};
 use crate::decode::{Paddle, Paddles};
+#[cfg(windows)]
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     INPUT, INPUT_0, INPUT_KEYBOARD, KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_KEYUP, SendInput,
     VIRTUAL_KEY,
@@ -23,6 +24,8 @@ pub struct Output {
 
 impl Output {
     pub fn new(b: Bindings) -> Output {
+        #[cfg(target_os = "linux")]
+        uinput::open();
         Self::with_sender(b, send)
     }
     pub fn with_sender(b: Bindings, f: impl FnMut(&KeySpec, bool) + 'static) -> Output {
@@ -40,6 +43,7 @@ impl Output {
 }
 
 // Verified manually (real SendInput is not exercised in unit tests).
+#[cfg(windows)]
 fn send(spec: &KeySpec, down: bool) {
     let ev = |vk: u16, up: bool| INPUT {
         r#type: INPUT_KEYBOARD,
@@ -57,6 +61,61 @@ fn send(spec: &KeySpec, down: bool) {
         [ev(spec.key, true)].into_iter().chain(spec.mods.iter().rev().map(|&m| ev(m, true))).collect()
     };
     unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
+}
+
+/// Down: modifiers, then the key. Up: the key, then the modifiers in reverse.
+#[cfg(any(target_os = "linux", test))]
+fn sequence(spec: &KeySpec, down: bool) -> Vec<(u16, bool)> {
+    if down {
+        spec.mods.iter().map(|&m| (m, true)).chain([(spec.key, true)]).collect()
+    } else {
+        [(spec.key, false)].into_iter().chain(spec.mods.iter().rev().map(|&m| (m, false))).collect()
+    }
+}
+
+// Verified manually (the real uinput device is not exercised in unit tests).
+#[cfg(target_os = "linux")]
+fn send(spec: &KeySpec, down: bool) {
+    uinput::emit(&sequence(spec, down));
+}
+
+/// One virtual keyboard named "paddle-keys" for the whole process.
+#[cfg(target_os = "linux")]
+mod uinput {
+    use evdev::uinput::VirtualDevice;
+    use evdev::{AttributeSet, EventType, InputEvent, KeyCode};
+    use std::sync::Mutex;
+
+    static DEV: Mutex<Option<VirtualDevice>> = Mutex::new(None);
+
+    /// Created up front: the compositor needs a moment to pick up a new device before its first key.
+    pub fn open() {
+        let mut dev = DEV.lock().unwrap_or_else(|e| e.into_inner());
+        if dev.is_none() {
+            match build() {
+                Ok(d) => *dev = Some(d),
+                Err(e) => eprintln!("paddle-keys: cannot create the uinput keyboard (/dev/uinput): {e}"),
+            }
+        }
+    }
+
+    fn build() -> std::io::Result<VirtualDevice> {
+        let mut keys = AttributeSet::<KeyCode>::new();
+        for c in crate::config::codes::all() {
+            keys.insert(KeyCode::new(c));
+        }
+        VirtualDevice::builder()?.name("paddle-keys").with_keys(&keys)?.build()
+    }
+
+    /// Each (code, down) is its own report, so modifiers are down before the key arrives.
+    pub fn emit(seq: &[(u16, bool)]) {
+        let mut dev = DEV.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(d) = dev.as_mut() {
+            for &(code, down) in seq {
+                let _ = d.emit(&[InputEvent::new(EventType::KEY.0, code, down as i32)]);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -105,6 +164,14 @@ PL = \"Ctrl+F15\"
         o.apply(p(false, false, true, false));
         let want = parse_keyspec("Ctrl+F15").unwrap();
         assert_eq!(*log.borrow(), vec![(want, true)]);
+    }
+
+    #[test]
+    fn modifier_order() {
+        let s = parse_keyspec("Ctrl+Shift+F13").unwrap();
+        let (c, sh, k) = (s.mods[0], s.mods[1], s.key);
+        assert_eq!(sequence(&s, true), vec![(c, true), (sh, true), (k, true)]);
+        assert_eq!(sequence(&s, false), vec![(k, false), (sh, false), (c, false)]);
     }
 
     #[test]

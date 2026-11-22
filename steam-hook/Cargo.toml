@@ -9,6 +9,9 @@ description = "Hook DLL loaded into steam.exe that presents the 8BitDo Ultimate 
 name = "paddle_keys_steam"
 crate-type = ["cdylib", "rlib"]
 
-[dependencies]
+[target.'cfg(windows)'.dependencies]
 minhook = "0.9.0"
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"

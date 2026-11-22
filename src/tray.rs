@@ -27,7 +27,8 @@ fn icon() -> Icon {
 pub fn run(paused: Arc<AtomicBool>, stop: Arc<AtomicBool>, poller: JoinHandle<()>, config: Option<PathBuf>, steam: Arc<State>) {
     let event_loop = EventLoopBuilder::new().build();
     let pause_i = CheckMenuItem::new("Paused", true, false, None);
-    let auto_i = CheckMenuItem::new("Start with Windows", true, autostart::is_enabled(), None);
+    let auto_label = if cfg!(windows) { "Start with Windows" } else { "Start on login" };
+    let auto_i = CheckMenuItem::new(auto_label, true, autostart::is_enabled(), None);
     let cfg_i = MenuItem::new("Open config (restart to apply)", true, None);
     let quit_i = MenuItem::new("Quit", true, None);
 
@@ -47,6 +48,14 @@ pub fn run(paused: Arc<AtomicBool>, stop: Arc<AtomicBool>, poller: JoinHandle<()
         elite.append(item).expect("menu");
     }
     elite.append(&PredefinedMenuItem::separator()).expect("menu");
+    // Linux: Steam loads the hook from steam.sh's LD_AUDIT, so that line has to be added once.
+    #[cfg(target_os = "linux")]
+    let (install_i, remove_i) = (
+        MenuItem::new("Install Steam hook (edits steam.sh)", true, None),
+        MenuItem::new("Remove Steam hook from steam.sh", true, None),
+    );
+    #[cfg(target_os = "linux")]
+    elite.append_items(&[&install_i, &remove_i, &PredefinedMenuItem::separator()]).expect("menu");
     elite.append(&status_i).expect("menu");
 
     let menu = Menu::new();
@@ -71,6 +80,12 @@ pub fn run(paused: Arc<AtomicBool>, stop: Arc<AtomicBool>, poller: JoinHandle<()
             status_i.set_text(shown.text());
         }
         while let Ok(ev) = rx.try_recv() {
+            #[cfg(target_os = "linux")]
+            if ev.id == install_i.id() || ev.id == remove_i.id() {
+                let r = if ev.id == install_i.id() { crate::steam::install_hook() } else { crate::steam::remove_hook() };
+                notify(&r.unwrap_or_else(|e| e));
+                continue;
+            }
             if ev.id == pause_i.id() {
                 paused.store(pause_i.is_checked(), Ordering::Relaxed);
             } else if ev.id == elite_i.id() {
@@ -88,7 +103,8 @@ pub fn run(paused: Arc<AtomicBool>, stop: Arc<AtomicBool>, poller: JoinHandle<()
                 auto_i.set_checked(autostart::is_enabled());
             } else if ev.id == cfg_i.id() {
                 if let Some(p) = &config {
-                    let _ = std::process::Command::new("notepad.exe").arg(p).spawn();
+                    let opener = if cfg!(windows) { "notepad.exe" } else { "xdg-open" };
+                    let _ = std::process::Command::new(opener).arg(p).spawn();
                 }
             } else if ev.id == quit_i.id() {
                 stop.store(true, Ordering::Relaxed);
@@ -101,4 +117,11 @@ pub fn run(paused: Arc<AtomicBool>, stop: Arc<AtomicBool>, poller: JoinHandle<()
             }
         }
     });
+}
+
+/// A desktop notification; the tray has no window to show results in.
+#[cfg(target_os = "linux")]
+fn notify(msg: &str) {
+    eprintln!("paddle-keys: {msg}");
+    let _ = std::process::Command::new("notify-send").args(["-a", "paddle-keys", "paddle-keys", msg]).spawn();
 }

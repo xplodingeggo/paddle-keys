@@ -48,10 +48,10 @@ pub struct Bindings {
 impl Default for Bindings {
     fn default() -> Self {
         Self {
-            l4: spec(&[], 0x7C),
-            r4: spec(&[], 0x7D),
-            pl: spec(&[], 0x7E),
-            pr: spec(&[], 0x7F),
+            l4: spec(&[], codes::fkey(13)),
+            r4: spec(&[], codes::fkey(14)),
+            pl: spec(&[], codes::fkey(15)),
+            pr: spec(&[], codes::fkey(16)),
         }
     }
 }
@@ -82,10 +82,10 @@ pub fn parse_keyspec(s: &str) -> Result<KeySpec, String> {
 
 fn modifier(t: &str) -> Result<u16, String> {
     match t.to_ascii_lowercase().as_str() {
-        "ctrl" => Ok(0x11),
-        "shift" => Ok(0x10),
-        "alt" => Ok(0x12),
-        "win" => Ok(0x5B),
+        "ctrl" => Ok(codes::CTRL),
+        "shift" => Ok(codes::SHIFT),
+        "alt" => Ok(codes::ALT),
+        "win" => Ok(codes::WIN),
         _ => Err(format!("unknown modifier {t:?}")),
     }
 }
@@ -93,10 +93,10 @@ fn modifier(t: &str) -> Result<u16, String> {
 fn key_code(t: &str) -> Result<u16, String> {
     let lower = t.to_ascii_lowercase();
     let named = match lower.as_str() {
-        "space" => Some(0x20),
-        "enter" => Some(0x0D),
-        "esc" => Some(0x1B),
-        "tab" => Some(0x09),
+        "space" => Some(codes::SPACE),
+        "enter" => Some(codes::ENTER),
+        "esc" => Some(codes::ESC),
+        "tab" => Some(codes::TAB),
         _ => None,
     };
     if let Some(k) = named {
@@ -104,14 +104,80 @@ fn key_code(t: &str) -> Result<u16, String> {
     }
     // Single char first, so "F" is the letter F and not a malformed F-key.
     if t.len() == 1 && t.as_bytes()[0].is_ascii_alphanumeric() {
-        return Ok(t.as_bytes()[0].to_ascii_uppercase() as u16);
+        return Ok(codes::char_key(t.as_bytes()[0].to_ascii_uppercase()));
     }
     if let Some(n) = lower.strip_prefix('f').and_then(|n| n.parse::<u16>().ok())
         && (1..=24).contains(&n)
     {
-        return Ok(0x6F + n);
+        return Ok(codes::fkey(n));
     }
     Err(format!("unknown key {t:?}"))
+}
+
+/// Windows virtual-key codes, as SendInput takes them.
+#[cfg(windows)]
+pub mod codes {
+    pub const CTRL: u16 = 0x11;
+    pub const SHIFT: u16 = 0x10;
+    pub const ALT: u16 = 0x12;
+    pub const WIN: u16 = 0x5B;
+    pub const SPACE: u16 = 0x20;
+    pub const ENTER: u16 = 0x0D;
+    pub const ESC: u16 = 0x1B;
+    pub const TAB: u16 = 0x09;
+
+    /// `c` is an uppercase ASCII letter or a digit.
+    pub fn char_key(c: u8) -> u16 {
+        c as u16
+    }
+
+    /// `n` is 1 to 24.
+    pub fn fkey(n: u16) -> u16 {
+        0x6F + n
+    }
+}
+
+/// Linux input event codes (`KEY_*` in linux/input-event-codes.h), as uinput takes them.
+#[cfg(target_os = "linux")]
+pub mod codes {
+    pub const CTRL: u16 = 29; // KEY_LEFTCTRL
+    pub const SHIFT: u16 = 42; // KEY_LEFTSHIFT
+    pub const ALT: u16 = 56; // KEY_LEFTALT
+    pub const WIN: u16 = 125; // KEY_LEFTMETA
+    pub const SPACE: u16 = 57;
+    pub const ENTER: u16 = 28;
+    pub const ESC: u16 = 1;
+    pub const TAB: u16 = 15;
+
+    /// `c` is an uppercase ASCII letter or a digit.
+    pub fn char_key(c: u8) -> u16 {
+        const LETTERS: [u16; 26] = [
+            30, 48, 46, 32, 18, 33, 34, 35, 23, 36, 37, 38, 50, 49, 24, 25, 16, 19, 31, 20, 22, 47, 17, 45, 21, 44,
+        ];
+        match c {
+            b'A'..=b'Z' => LETTERS[(c - b'A') as usize],
+            b'0' => 11,
+            _ => (c - b'1') as u16 + 2,
+        }
+    }
+
+    /// `n` is 1 to 24.
+    pub fn fkey(n: u16) -> u16 {
+        match n {
+            1..=10 => 58 + n,
+            11 => 87,
+            12 => 88,
+            _ => 170 + n, // KEY_F13 is 183
+        }
+    }
+
+    /// Every code a binding can produce, for the uinput keyboard's capabilities.
+    pub fn all() -> Vec<u16> {
+        let mut v = vec![CTRL, SHIFT, ALT, WIN, SPACE, ENTER, ESC, TAB];
+        v.extend((b'A'..=b'Z').chain(b'0'..=b'9').map(char_key));
+        v.extend((1..=24).map(fkey));
+        v
+    }
 }
 
 /// Missing file: write the defaults so the user can edit them. Any failure falls back to defaults.
@@ -165,35 +231,36 @@ fn spec(mods: &[u16], key: u16) -> KeySpec {
 
 #[cfg(test)]
 mod tests {
+    use super::codes::*;
     use super::*;
 
     #[test]
     fn function_keys() {
-        assert_eq!(parse_keyspec("F13"), Ok(spec(&[], 0x7C)));
-        assert_eq!(parse_keyspec("F24"), Ok(spec(&[], 0x87)));
-        assert_eq!(parse_keyspec("f16"), Ok(spec(&[], 0x7F)));
+        assert_eq!(parse_keyspec("F13"), Ok(spec(&[], fkey(13))));
+        assert_eq!(parse_keyspec("F24"), Ok(spec(&[], fkey(24))));
+        assert_eq!(parse_keyspec("f16"), Ok(spec(&[], fkey(16))));
     }
 
     #[test]
     fn modifiers() {
         assert_eq!(
             parse_keyspec("Ctrl+Shift+F13"),
-            Ok(spec(&[0x11, 0x10], 0x7C))
+            Ok(spec(&[CTRL, SHIFT], fkey(13)))
         );
-        assert_eq!(parse_keyspec("alt+F1"), Ok(spec(&[0x12], 0x70)));
-        assert_eq!(parse_keyspec("Win+F1"), Ok(spec(&[0x5B], 0x70)));
-        assert_eq!(parse_keyspec(" Ctrl + F1 "), Ok(spec(&[0x11], 0x70)));
+        assert_eq!(parse_keyspec("alt+F1"), Ok(spec(&[ALT], fkey(1))));
+        assert_eq!(parse_keyspec("Win+F1"), Ok(spec(&[WIN], fkey(1))));
+        assert_eq!(parse_keyspec(" Ctrl + F1 "), Ok(spec(&[CTRL], fkey(1))));
     }
 
     #[test]
     fn letters_digits_and_named_keys() {
-        assert_eq!(parse_keyspec("A"), Ok(spec(&[], 0x41)));
-        assert_eq!(parse_keyspec("F"), Ok(spec(&[], 0x46)));
-        assert_eq!(parse_keyspec("5"), Ok(spec(&[], 0x35)));
-        assert_eq!(parse_keyspec("Space"), Ok(spec(&[], 0x20)));
-        assert_eq!(parse_keyspec("Enter"), Ok(spec(&[], 0x0D)));
-        assert_eq!(parse_keyspec("Esc"), Ok(spec(&[], 0x1B)));
-        assert_eq!(parse_keyspec("Tab"), Ok(spec(&[], 0x09)));
+        assert_eq!(parse_keyspec("A"), Ok(spec(&[], char_key(b'A'))));
+        assert_eq!(parse_keyspec("F"), Ok(spec(&[], char_key(b'F'))));
+        assert_eq!(parse_keyspec("5"), Ok(spec(&[], char_key(b'5'))));
+        assert_eq!(parse_keyspec("Space"), Ok(spec(&[], SPACE)));
+        assert_eq!(parse_keyspec("Enter"), Ok(spec(&[], ENTER)));
+        assert_eq!(parse_keyspec("Esc"), Ok(spec(&[], ESC)));
+        assert_eq!(parse_keyspec("Tab"), Ok(spec(&[], TAB)));
     }
 
     #[test]
@@ -207,10 +274,10 @@ mod tests {
     #[test]
     fn default_bindings() {
         let b = Bindings::default();
-        assert_eq!(b.get(Paddle::L4), &spec(&[], 0x7C));
-        assert_eq!(b.get(Paddle::R4), &spec(&[], 0x7D));
-        assert_eq!(b.get(Paddle::PL), &spec(&[], 0x7E));
-        assert_eq!(b.get(Paddle::PR), &spec(&[], 0x7F));
+        assert_eq!(b.get(Paddle::L4), &spec(&[], fkey(13)));
+        assert_eq!(b.get(Paddle::R4), &spec(&[], fkey(14)));
+        assert_eq!(b.get(Paddle::PL), &spec(&[], fkey(15)));
+        assert_eq!(b.get(Paddle::PR), &spec(&[], fkey(16)));
     }
 
     #[test]
@@ -244,10 +311,10 @@ mod tests {
         let path = dir.join("keys.toml");
         std::fs::write(&path, "[keys]\nL4 = \"Ctrl+F1\"\n").unwrap();
         let b = load(&path);
-        assert_eq!(b.get(Paddle::L4), &spec(&[0x11], 0x70));
-        assert_eq!(b.get(Paddle::R4), &spec(&[], 0x7D));
-        assert_eq!(b.get(Paddle::PL), &spec(&[], 0x7E));
-        assert_eq!(b.get(Paddle::PR), &spec(&[], 0x7F));
+        assert_eq!(b.get(Paddle::L4), &spec(&[CTRL], fkey(1)));
+        assert_eq!(b.get(Paddle::R4), &spec(&[], fkey(14)));
+        assert_eq!(b.get(Paddle::PL), &spec(&[], fkey(15)));
+        assert_eq!(b.get(Paddle::PR), &spec(&[], fkey(16)));
     }
 
     #[test]
@@ -260,7 +327,39 @@ mod tests {
         )
         .unwrap();
         let b = load(&path);
-        assert_eq!(b.get(Paddle::L4), &spec(&[], 0x7C));
-        assert_eq!(b.get(Paddle::R4), &spec(&[0x11], 0x71));
+        assert_eq!(b.get(Paddle::L4), &spec(&[], fkey(13)));
+        assert_eq!(b.get(Paddle::R4), &spec(&[CTRL], fkey(2)));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_virtual_keys() {
+        assert_eq!(parse_keyspec("Ctrl+Shift+F13"), Ok(spec(&[0x11, 0x10], 0x7C)));
+        assert_eq!(parse_keyspec("Win+F24"), Ok(spec(&[0x5B], 0x87)));
+        assert_eq!(parse_keyspec("A"), Ok(spec(&[], 0x41)));
+        assert_eq!(parse_keyspec("5"), Ok(spec(&[], 0x35)));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_key_codes() {
+        // values from linux/input-event-codes.h
+        assert_eq!(parse_keyspec("Ctrl+Shift+F13"), Ok(spec(&[29, 42], 183)));
+        assert_eq!(parse_keyspec("Win+F24"), Ok(spec(&[125], 194)));
+        assert_eq!(parse_keyspec("F1"), Ok(spec(&[], 59)));
+        assert_eq!(parse_keyspec("F10"), Ok(spec(&[], 68)));
+        assert_eq!(parse_keyspec("F11"), Ok(spec(&[], 87)));
+        assert_eq!(parse_keyspec("F12"), Ok(spec(&[], 88)));
+        assert_eq!(parse_keyspec("A"), Ok(spec(&[], 30)));
+        assert_eq!(parse_keyspec("Q"), Ok(spec(&[], 16)));
+        assert_eq!(parse_keyspec("M"), Ok(spec(&[], 50)));
+        assert_eq!(parse_keyspec("Z"), Ok(spec(&[], 44)));
+        assert_eq!(parse_keyspec("1"), Ok(spec(&[], 2)));
+        assert_eq!(parse_keyspec("9"), Ok(spec(&[], 10)));
+        assert_eq!(parse_keyspec("0"), Ok(spec(&[], 11)));
+        assert_eq!(parse_keyspec("Esc"), Ok(spec(&[], 1)));
+        let all = all();
+        let unique: std::collections::HashSet<_> = all.iter().collect();
+        assert_eq!(unique.len(), all.len(), "no two keys share a code");
     }
 }
