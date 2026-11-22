@@ -15,20 +15,21 @@ XInput is never opened or modified. Your sticks, triggers and buttons behave exa
 
 Optional: **Steam Elite mode** makes Steam Input see the controller as an Xbox Elite Series 2, so the paddles show up as real paddle buttons (P1 to P4) in Steam, next to full 16-bit sticks, rumble and the Xbox button. It is off by default; see [Steam Elite mode](#steam-elite-mode).
 
-Works on **Windows** and **Linux**. Linux specifics are in [Linux](#linux).
+Works on **Windows** and **Linux**: [install on Windows](#install-windows) or [install on Linux](#linux).
 
 ## Install (Windows)
 
-1. Download `paddle-keys-<version>-windows-x64.zip` from the [latest release](../../releases/latest) (Windows zips start at 0.3.2; [v0.2.0](../../releases/tag/v0.2.0) is the older one) and extract it. Keep `paddle-keys.exe` and `paddle_keys_steam.dll` in the same folder. Compare them with `SHA256SUMS.txt` if you like.
-2. Close the 8BitDo Ultimate Software. It talks to the same channel and the two will fight over replies.
-3. Run `paddle-keys.exe`. A tray icon appears (it may be under the `^` overflow arrow).
+1. Download `paddle-keys-<version>-windows-x64.zip` from the [latest release](../../releases/latest) and extract it. Windows zips start at 0.3.2; [v0.2.0](../../releases/tag/v0.2.0) is the older one.
+2. Keep `paddle-keys.exe` and `paddle_keys_steam.dll` in the same folder. Compare them with `SHA256SUMS.txt` if you like.
+3. Close the 8BitDo Ultimate Software. It talks to the same channel and the two will fight over replies.
+4. Run `paddle-keys.exe`. A tray icon appears (it may be under the `^` overflow arrow).
 
 Windows SmartScreen or antivirus may warn about an unsigned program that reads a HID device and sends keystrokes. The source is in this repo and the release is built from it; build it yourself if you prefer.
 
 ### Tray menu
 
 - **Paused:** stop pressing keys (held keys are released).
-- **Steam Elite mode:** see below.
+- **Steam Elite mode:** see [Steam Elite mode](#steam-elite-mode).
 - **Start with Windows:** adds or removes a per-user Run entry.
 - **Open config (restart to apply):** opens the config file in Notepad.
 - **Quit**
@@ -57,19 +58,7 @@ Values are an optional list of modifiers joined with `+`, then one key: `F1` to 
 
 ## Steam Elite mode
 
-Steam reads Xbox controllers through Valve's Xbox Extended Feature Support driver and its own copy of SDL. With this mode on, `paddle-keys` loads a small hook (`paddle_keys_steam.dll`) into `steam.exe` that presents the 8BitDo as an Xbox Elite Series 2 controller, translates its reports, and feeds Steam the paddle state that `paddle-keys` reads. In Steam's controller settings the paddles then appear as P1 to P4 and can be bound like on a real Elite. Details: [docs/STEAM.md](docs/STEAM.md).
-
-**Requirements**
-
-1. In Steam: **Settings > Controller**, turn on **Enable Steam Input for Xbox controllers**.
-2. In the same page, under advanced settings, install **Xbox Extended Feature Support**, then reboot.
-3. The controller in XInput mode.
-
-**Use it**
-
-1. Tray menu > **Steam Elite mode** > **Enabled**.
-2. Turn the controller off and on. Steam picks up controllers within seconds of starting, before the hook is in, so this is also needed after Steam restarts. The status line in the submenu shows what is missing, or that Steam sees an Elite 2.
-3. Steam lists one controller, the Xbox Elite 2. While the mode is on, Steam ignores the 8BitDo's own entries.
+Makes Steam Input see the controller as an **Xbox Elite Series 2**, so the paddles appear in Steam as real paddle buttons (P1 to P4) that you can bind like on a real Elite. You also keep full 16-bit sticks, rumble and the Xbox button. Off by default, on Windows and Linux.
 
 | Paddle | Elite paddle |
 |--------|--------------|
@@ -78,20 +67,43 @@ Steam reads Xbox controllers through Valve's Xbox Extended Feature Support drive
 | L4 | P3 (upper left) |
 | PL | P4 (lower left) |
 
-**Where the paddles go** (same submenu):
+On Linux, set it up as described in [Steam Elite mode on Linux](#steam-elite-mode-on-linux). The rest of this section covers Windows, plus how paddles are routed on both.
 
-- **Steam when active, else keys** (default): paddles go to Steam while it has the controller as an Elite 2, and to F13-F16 otherwise (DInput mode, Steam closed, mode just enabled).
-- **Keys only**, **Steam only**.
-- **Keys and Steam at once**: both, which can double up inputs.
+### Windows setup
 
-**Good to know**
+How it works: Steam reads Xbox controllers through Valve's Xbox Extended Feature Support driver and its own copy of SDL. `paddle-keys` loads a small hook (`paddle_keys_steam.dll`) into `steam.exe`. The hook presents the 8BitDo as an Elite 2, translates its reports and feeds Steam the paddle state. Details: [docs/STEAM.md](docs/STEAM.md).
 
-- This injects code into the Steam client, the same way Steam skin and plugin loaders do. It does not touch games or their anti-cheat, and VAC scans games, not the Steam client, but Valve has never said anything about tools like this. Use it at your own risk.
-- Antivirus may flag loading a DLL into another process. The source is here.
-- Games that turn Steam Input off get the plain Xbox controller without paddles. In the default mode the paddles then do nothing; pick **Keys only** for those games.
-- The hook stays loaded until Steam exits. Turning the mode off, or quitting `paddle-keys`, stops it from taking over newly connected controllers and releases the paddles; a controller that is already taken over stays an Elite 2 until you turn it off and on.
-- Triggers keep the controller's 8-bit resolution (scaled to the Elite's 10-bit range).
-- Only the Ultimate 2 Wireless in XInput mode is supported. Want another controller? See [docs/ADDING-CONTROLLERS.md](docs/ADDING-CONTROLLERS.md).
+**Requirements**
+
+1. In Steam: **Settings > Controller**, turn on **Enable Steam Input for Xbox controllers**.
+2. In the same page, under advanced settings, install **Xbox Extended Feature Support**, then reboot.
+3. The controller in XInput mode.
+
+**Turn it on**
+
+1. Tray menu > **Steam Elite mode** > **Enabled**.
+2. Turn the controller off and on. Steam picks up controllers within seconds of starting, before the hook is in, so this is also needed after Steam restarts.
+3. The status line in the submenu shows what is missing, or that Steam sees an Elite 2. Steam then lists one controller and ignores the 8BitDo's own entries.
+
+### Where the paddles go
+
+In the tray, under Steam Elite mode (Windows and Linux):
+
+| Option | What happens |
+|--------|--------------|
+| **Steam when active, else keys** (default) | Paddles go to Steam while it has the controller as an Elite 2, and to F13-F16 otherwise (DInput mode, Steam closed, mode just enabled). |
+| **Keys only** | Paddles only press keys. |
+| **Steam only** | Paddles only go to Steam. |
+| **Keys and Steam at once** | Both, which can double up inputs. |
+
+### Good to know
+
+- **Risk (Windows):** the hook injects code into the Steam client, the same way Steam skin and plugin loaders do. It does not touch games or their anti-cheat, and VAC scans games, not the Steam client, but Valve has never said anything about tools like this. Use it at your own risk.
+- **Antivirus** may flag loading a DLL into another process. The source is here.
+- **Games with Steam Input off** get the plain Xbox controller without paddles. In the default mode the paddles then do nothing; pick **Keys only** for those games.
+- **Turning it off:** the hook stays loaded until Steam exits. Turning the mode off, or quitting `paddle-keys`, stops it from taking over newly connected controllers and releases the paddles. A controller that is already taken over stays an Elite 2 until you turn it off and on.
+- **Triggers** keep the controller's 8-bit resolution (scaled to the Elite's 10-bit range).
+- **Supported:** only the Ultimate 2 Wireless in XInput mode. Want another controller? See [docs/ADDING-CONTROLLERS.md](docs/ADDING-CONTROLLERS.md).
 
 ## Linux
 
@@ -171,7 +183,7 @@ To undo it, use the tray item or run `paddle-keys --remove-steam-hook`.
 - It only changes what Steam's SDL3 sees of the 8BitDo's gamepad node. Games are not touched.
 - A Steam update that replaces `steam.sh` drops the line; the status then tells you to install it again.
 - Unlike on Windows, nothing is injected into a running Steam. If Steam was started before the hook was installed, the tray status says to restart Steam.
-- Routing and status work as on Windows.
+- Paddle routing works as on Windows, see [Where the paddles go](#where-the-paddles-go).
 
 How it works: [docs/STEAM-LINUX.md](docs/STEAM-LINUX.md).
 
