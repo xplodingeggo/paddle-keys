@@ -19,7 +19,7 @@ Works on **Windows** and **Linux**. Linux specifics are in [Linux](#linux).
 
 ## Install (Windows)
 
-1. Download `paddle-keys-<version>-windows-x64.zip` from [Releases](../../releases) and extract it. The newest Windows build is [v0.2.0](../../releases/tag/v0.2.0); 0.3.0 only added Linux. Keep `paddle-keys.exe` and `paddle_keys_steam.dll` in the same folder. Compare them with `SHA256SUMS.txt` if you like.
+1. Download `paddle-keys-<version>-windows-x64.zip` from [Releases](../../releases) and extract it. The newest Windows build is [v0.2.0](../../releases/tag/v0.2.0); the 0.3 releases only added Linux. Keep `paddle-keys.exe` and `paddle_keys_steam.dll` in the same folder. Compare them with `SHA256SUMS.txt` if you like.
 2. Close the 8BitDo Ultimate Software. It talks to the same channel and the two will fight over replies.
 3. Run `paddle-keys.exe`. A tray icon appears (it may be under the `^` overflow arrow).
 
