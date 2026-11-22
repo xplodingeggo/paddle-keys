@@ -32,7 +32,7 @@ jobs:
           cp target/release/paddle-keys "$d/"
           cp target/release/libpaddle_keys_steam.so "$d/libpaddle_keys_steam64.so"
           cp target/i686-unknown-linux-gnu/release/libpaddle_keys_steam.so "$d/libpaddle_keys_steam32.so"
-          cp README.md LICENSE "$d/"
+          cp README.md LICENSE packaging/linux/install.sh packaging/linux/70-paddle-keys.rules packaging/linux/paddle-keys.desktop "$d/"
           tar czf "$d.tar.gz" "$d"
       - uses: actions/upload-artifact@v4
         with:
@@ -46,3 +46,39 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --workspace
       - run: cargo build --release --workspace
+      - name: Package
+        shell: bash
+        run: |
+          v=dev
+          if [ "$GITHUB_REF_TYPE" = tag ]; then v=${GITHUB_REF_NAME#v}; fi
+          d=paddle-keys-$v-windows-x64
+          mkdir "$d"
+          cp target/release/paddle-keys.exe target/release/paddle_keys_steam.dll README.md LICENSE "$d/"
+          7z a -tzip "$d.zip" "$d" > /dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: "*.zip"
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [linux, windows]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          notes=../.github/release-notes/$GITHUB_REF_NAME.md
+          if [ -f "$notes" ]; then n="--notes-file $notes"; else n="--generate-notes"; fi
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" $n --verify-tag ./*.tar.gz ./*.zip SHA256SUMS.txt

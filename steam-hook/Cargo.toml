@@ -1,6 +1,6 @@
 [package]
 name = "paddle-keys-steam"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 license = "MIT"
 description = "Hook DLL loaded into steam.exe that presents the 8BitDo Ultimate 2 to Steam Input as an Xbox Elite 2"

@@ -1,0 +1,12 @@
+post_install() {
+  echo ">> Run 'paddle-keys --probe 5' with the controller on, then start paddle-keys."
+  echo ">> Steam Elite mode: tray > Steam Elite mode > Enabled > Install Steam hook, then restart Steam."
+}
+
+post_upgrade() {
+  echo ">> If Steam Elite mode is on, restart Steam so it loads the updated hook."
+}
+
+pre_remove() {
+  echo ">> Remove the Steam hook first if you added it: paddle-keys --remove-steam-hook"
+}

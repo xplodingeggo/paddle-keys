@@ -1,0 +1,26 @@
+# Maintainer: xplodingeggo
+pkgname=paddle-keys-bin
+_name=paddle-keys
+pkgver=0.3.2
+pkgrel=1
+pkgdesc="8BitDo Ultimate 2 back paddles as keys or Xbox Elite paddles in Steam, while staying in XInput mode"
+arch=('x86_64')
+url="https://github.com/xplodingeggo/paddle-keys"
+license=('MIT')
+depends=('glibc' 'gtk3' 'libayatana-appindicator' 'systemd-libs')
+optdepends=('steam: Steam Elite mode (paddles as P1 to P4 in Steam Input)')
+provides=("$_name")
+conflicts=("$_name")
+source=("$url/releases/download/v$pkgver/$_name-$pkgver-linux-x86_64.tar.gz")
+install=paddle-keys-bin.install
+sha256sums=('SKIP')
+
+package() {
+  cd "$_name-$pkgver-linux-x86_64"
+  install -Dm755 paddle-keys "$pkgdir/usr/bin/paddle-keys"
+  install -Dm644 libpaddle_keys_steam32.so libpaddle_keys_steam64.so -t "$pkgdir/usr/lib/paddle-keys/"
+  install -Dm644 70-paddle-keys.rules "$pkgdir/usr/lib/udev/rules.d/70-paddle-keys.rules"
+  install -Dm644 paddle-keys.desktop "$pkgdir/usr/share/applications/paddle-keys.desktop"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$_name/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,4 @@
+# paddle-keys: let the logged-in user read the 8BitDo Ultimate 2's vendor HID channel
+# (interface 2 of 2DC8:310B) and create the virtual keyboard.
+KERNEL=="hidraw*", ATTRS{idVendor}=="2dc8", ATTRS{idProduct}=="310b", TAG+="uaccess"
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"

@@ -19,7 +19,7 @@ Works on **Windows** and **Linux**. Linux specifics are in [Linux](#linux).
 
 ## Install (Windows)
 
-1. Download `paddle-keys-<version>-windows-x64.zip` from [Releases](../../releases) and extract it. The newest Windows build is [v0.2.0](../../releases/tag/v0.2.0); the 0.3 releases only added Linux. Keep `paddle-keys.exe` and `paddle_keys_steam.dll` in the same folder. Compare them with `SHA256SUMS.txt` if you like.
+1. Download `paddle-keys-<version>-windows-x64.zip` from the [latest release](../../releases/latest) (Windows zips start at 0.3.2; [v0.2.0](../../releases/tag/v0.2.0) is the older one) and extract it. Keep `paddle-keys.exe` and `paddle_keys_steam.dll` in the same folder. Compare them with `SHA256SUMS.txt` if you like.
 2. Close the 8BitDo Ultimate Software. It talks to the same channel and the two will fight over replies.
 3. Run `paddle-keys.exe`. A tray icon appears (it may be under the `^` overflow arrow).
 
@@ -99,14 +99,12 @@ The same app and the same Steam Elite mode, built for Linux. Nothing here needs 
 
 ### Install
 
-1. Download `paddle-keys-<version>-linux-x86_64.tar.gz` from the [latest release](../../releases/latest) and extract it anywhere, for example `~/.local/opt/paddle-keys`. Keep `paddle-keys`, `libpaddle_keys_steam32.so` and `libpaddle_keys_steam64.so` in one folder. Compare with `SHA256SUMS.txt` if you like. It needs glibc 2.35 or newer, GTK 3 and an AppIndicator library (Arch: `gtk3 libayatana-appindicator`; Debian/Ubuntu: `libgtk-3-0 libayatana-appindicator3-1`). Or build it yourself (see [Build](#build)).
-2. Access: paddle-keys needs read/write on the pad's vendor `hidraw` node (interface 2) and on `/dev/uinput`. Steam's udev rules (`60-steam-input.rules`) give the logged-in user `/dev/uinput`. Check the pad with `paddle-keys --probe 5`; if it says not found, add a rule such as `/etc/udev/rules.d/70-paddle-keys.rules`:
+**Arch Linux:** `paddle-keys-bin`, built from the release tarball with the PKGBUILD in [packaging/arch](packaging/arch) (`makepkg -si` there). It installs the app, the hooks, the udev rule and the menu entry.
 
-   ```
-   KERNEL=="hidraw*", ATTRS{idVendor}=="2dc8", ATTRS{idProduct}=="310b", TAG+="uaccess"
-   ```
+**Any distro:**
 
-   then `sudo udevadm control --reload && sudo udevadm trigger`.
+1. Download `paddle-keys-<version>-linux-x86_64.tar.gz` from the [latest release](../../releases/latest), extract it and run `./install.sh`. It installs to `~/.local/opt/paddle-keys` (command `~/.local/bin/paddle-keys`), adds the app menu entry and offers to install the udev rule. `./install.sh --uninstall` removes everything again. Compare with `SHA256SUMS.txt` if you like. It needs glibc 2.35 or newer, GTK 3 and an AppIndicator library (Arch: `gtk3 libayatana-appindicator`; Debian/Ubuntu: `libgtk-3-0 libayatana-appindicator3-1`). Or build it yourself (see [Build](#build)).
+2. Access: paddle-keys needs read/write on the pad's vendor `hidraw` node (interface 2) and on `/dev/uinput`. The udev rule in the archive (`70-paddle-keys.rules`, installed by `install.sh` or the Arch package) grants both to the logged-in user. Check the pad with `paddle-keys --probe 5`.
 3. Close the 8BitDo Ultimate Software if you run it under Wine, for the same reason as on Windows.
 4. Run `paddle-keys`. The tray icon needs a StatusNotifier host (KDE, GNOME with the AppIndicator extension, waybar's `tray` module, ...). On Hyprland, start it with `exec-once = paddle-keys`; "Start on login" writes an XDG autostart entry, which Hyprland does not read.
 

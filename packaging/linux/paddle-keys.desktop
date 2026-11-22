@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=paddle-keys
+Comment=8BitDo Ultimate 2 paddles as keys and Steam Elite paddles
+Exec=paddle-keys
+Icon=input-gaming
+Categories=Utility;Game;
+Terminal=false

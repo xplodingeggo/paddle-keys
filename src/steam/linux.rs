@@ -16,7 +16,7 @@ use super::{State, Status, setting_on, shm};
 const MARKER: &str = "# paddle-keys";
 /// Part of every staged hook path, so removal finds exactly ours.
 const HOOK_NAME: &str = "libpaddle_keys_steam";
-/// (staged name, built names next to the exe or in the cargo target dir, relative to the exe dir)
+/// (staged name, built names to look for in each search dir; the second is the cargo target layout)
 const HOOKS: [(&str, &[&str]); 2] = [
     ("libpaddle_keys_steam32.so", &["libpaddle_keys_steam32.so", "../i686-unknown-linux-gnu/release/libpaddle_keys_steam.so"]),
     ("libpaddle_keys_steam64.so", &["libpaddle_keys_steam64.so", "libpaddle_keys_steam.so"]),
@@ -135,12 +135,18 @@ fn hook_dir() -> Option<PathBuf> {
 /// running Steam keeps the file it loaded. Returns the staged paths that exist afterwards.
 fn stage() -> Vec<PathBuf> {
     let Some(dir) = hook_dir() else { return vec![] };
-    let exe_dir = std::env::current_exe().ok().and_then(|e| e.parent().map(Path::to_path_buf));
+    // next to the binary (tarball, cargo target dir), then where distro packages put them
+    let search: Vec<PathBuf> = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(Path::to_path_buf))
+        .into_iter()
+        .chain(["/usr/lib/paddle-keys", "/usr/local/lib/paddle-keys"].map(PathBuf::from))
+        .collect();
     let _ = std::fs::create_dir_all(&dir);
     let mut out = Vec::new();
     for (staged, built) in HOOKS {
         let dst = dir.join(staged);
-        let src = exe_dir.as_ref().and_then(|d| built.iter().map(|b| d.join(b)).find(|p| p.is_file()));
+        let src = search.iter().flat_map(|d| built.iter().map(move |b| d.join(b))).find(|p| p.is_file());
         if let Some(src) = src
             && let Ok(bytes) = std::fs::read(&src)
             && std::fs::read(&dst).ok().as_deref() != Some(&bytes[..])
