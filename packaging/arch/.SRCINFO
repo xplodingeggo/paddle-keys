@@ -1,0 +1,25 @@
+pkgbase = paddle-keys-bin
+	pkgdesc = 8BitDo Ultimate 2 back paddles as keys or Xbox Elite paddles in Steam, while staying in XInput mode
+	pkgver = 0.3.2
+	pkgrel = 1
+	url = https://github.com/xplodingeggo/paddle-keys
+	install = paddle-keys-bin.install
+	arch = x86_64
+	license = MIT
+	depends = glibc
+	depends = libgcc
+	depends = gtk3
+	depends = glib2
+	depends = cairo
+	depends = gdk-pixbuf2
+	depends = libayatana-appindicator
+	depends = systemd-libs
+	optdepends = steam: Steam Elite mode (paddles as P1 to P4 in Steam Input)
+	provides = paddle-keys
+	conflicts = paddle-keys
+	options = !debug
+	options = !strip
+	source = https://github.com/xplodingeggo/paddle-keys/releases/download/v0.3.2/paddle-keys-0.3.2-linux-x86_64.tar.gz
+	sha256sums = 2f88de5870b7ef669674027798a7b7db4fb4ea264e30d7ae4f99dd4e7061f42b
+
+pkgname = paddle-keys-bin

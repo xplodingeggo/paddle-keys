@@ -7,13 +7,14 @@ pkgdesc="8BitDo Ultimate 2 back paddles as keys or Xbox Elite paddles in Steam, 
 arch=('x86_64')
 url="https://github.com/xplodingeggo/paddle-keys"
 license=('MIT')
-depends=('glibc' 'gtk3' 'libayatana-appindicator' 'systemd-libs')
+depends=('glibc' 'libgcc' 'gtk3' 'glib2' 'cairo' 'gdk-pixbuf2' 'libayatana-appindicator' 'systemd-libs')
 optdepends=('steam: Steam Elite mode (paddles as P1 to P4 in Steam Input)')
+options=('!debug' '!strip')
 provides=("$_name")
 conflicts=("$_name")
 source=("$url/releases/download/v$pkgver/$_name-$pkgver-linux-x86_64.tar.gz")
 install=paddle-keys-bin.install
-sha256sums=('SKIP')
+sha256sums=('2f88de5870b7ef669674027798a7b7db4fb4ea264e30d7ae4f99dd4e7061f42b')
 
 package() {
   cd "$_name-$pkgver-linux-x86_64"
