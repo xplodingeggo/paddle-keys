@@ -99,7 +99,7 @@ The same app and the same Steam Elite mode, built for Linux. Nothing here needs 
 
 ### Install
 
-1. Download `paddle-keys-<version>-linux-x86_64.tar.gz` from the [latest release](../../releases/latest) and extract it anywhere, for example `~/.local/opt/paddle-keys`. Keep `paddle-keys`, `libpaddle_keys_steam32.so` and `libpaddle_keys_steam64.so` in one folder. Compare with `SHA256SUMS.txt` if you like. It needs glibc 2.35 or newer and the GTK 3, libxdo and AppIndicator libraries (Arch: `gtk3 xdotool libayatana-appindicator`; Debian/Ubuntu: `libgtk-3-0 libxdo3 libayatana-appindicator3-1`). Or build it yourself (see [Build](#build)).
+1. Download `paddle-keys-<version>-linux-x86_64.tar.gz` from the [latest release](../../releases/latest) and extract it anywhere, for example `~/.local/opt/paddle-keys`. Keep `paddle-keys`, `libpaddle_keys_steam32.so` and `libpaddle_keys_steam64.so` in one folder. Compare with `SHA256SUMS.txt` if you like. It needs glibc 2.35 or newer, GTK 3 and an AppIndicator library (Arch: `gtk3 libayatana-appindicator`; Debian/Ubuntu: `libgtk-3-0 libayatana-appindicator3-1`). Or build it yourself (see [Build](#build)).
 2. Access: paddle-keys needs read/write on the pad's vendor `hidraw` node (interface 2) and on `/dev/uinput`. Steam's udev rules (`60-steam-input.rules`) give the logged-in user `/dev/uinput`. Check the pad with `paddle-keys --probe 5`; if it says not found, add a rule such as `/etc/udev/rules.d/70-paddle-keys.rules`:
 
    ```

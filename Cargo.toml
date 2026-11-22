@@ -9,7 +9,8 @@ repository = "https://github.com/xplodingeggo/paddle-keys"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
-tray-icon = "0.19"
+# no libxdo: only needed for predefined copy/paste items, and its soname differs between distros
+tray-icon = { version = "0.19", default-features = false }
 tao = "0.30"
 
 [target.'cfg(windows)'.dependencies]
