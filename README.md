@@ -99,7 +99,7 @@ The same app and the same Steam Elite mode, built for Linux. Nothing here needs 
 
 ### Install
 
-**Arch Linux** (builds a pacman package from the release; no Rust needed):
+**Arch Linux** (packages the prebuilt release binaries into a pacman package; nothing is compiled, so no Rust needed):
 
 ```
 mkdir paddle-keys-pkg && cd paddle-keys-pkg
@@ -109,7 +109,7 @@ done
 makepkg -si
 ```
 
-`makepkg` downloads the release tarball from GitHub, checks its checksum and builds `paddle-keys-bin`; `-si` then installs it with pacman (it asks for your password) and pulls in any missing dependencies. Or clone the repo and run `makepkg -si` inside `packaging/arch`. It installs the app, the hooks, the udev rule and the menu entry. Remove it with `sudo pacman -R paddle-keys-bin`. After installing, replug or power-cycle the controller once so the udev rule applies, run `paddle-keys --probe 5`, then start `paddle-keys`.
+`makepkg` downloads the prebuilt release tarball from GitHub, checks its checksum and packs `paddle-keys-bin` from it; `-si` then installs it with pacman (it asks for your password) and pulls in any missing dependencies. Or clone the repo and run `makepkg -si` inside `packaging/arch`. It installs the app, the hooks, the udev rule and the menu entry. Remove it with `sudo pacman -R paddle-keys-bin`. After installing, replug or power-cycle the controller once so the udev rule applies, run `paddle-keys --probe 5`, then start `paddle-keys`.
 
 **Any distro:**
 
