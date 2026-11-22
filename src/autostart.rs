@@ -18,7 +18,8 @@ pub fn is_enabled_named(name: &str) -> bool {
 
 #[cfg(windows)]
 pub fn set_named(name: &str, enabled: bool) -> io::Result<()> {
-    let key = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(RUN, KEY_WRITE)?;
+    // create, not open: a fresh profile has no Run key yet
+    let (key, _) = RegKey::predef(HKEY_CURRENT_USER).create_subkey_with_flags(RUN, KEY_WRITE)?;
     if enabled {
         let exe = std::env::current_exe()?;
         key.set_value(name, &format!("\"{}\"", exe.display()))
