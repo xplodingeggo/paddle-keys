@@ -5,6 +5,7 @@ mod config;
 mod decode;
 mod device;
 mod keys;
+mod steam;
 mod tray;
 
 use std::path::PathBuf;
@@ -41,9 +42,14 @@ fn main() {
         .map(|a| PathBuf::from(a).join("paddle-keys").join("config.toml"));
     let bindings = path.as_deref().map(config::load).unwrap_or_default();
     let (stop, paused) = (Arc::new(AtomicBool::new(false)), Arc::new(AtomicBool::new(false)));
+    let state = steam::State::load();
     let poller = {
-        let (s, p) = (stop.clone(), paused.clone());
-        std::thread::spawn(move || device::run(keys::Output::new(bindings), s, p))
+        let (s, p, st) = (stop.clone(), paused.clone(), state.clone());
+        std::thread::spawn(move || device::run(keys::Output::new(bindings), s, p, st))
     };
-    tray::run(paused, stop, poller, path);
+    {
+        let (s, st) = (stop.clone(), state.clone());
+        std::thread::spawn(move || steam::run(st, s));
+    }
+    tray::run(paused, stop, poller, path, state);
 }

@@ -1,5 +1,6 @@
-use crate::decode::{POLL, Paddle, mask_of, parse_reply};
+use crate::decode::{POLL, Paddle, Paddles, mask_of, parse_reply};
 use crate::keys::Output;
+use crate::steam::State;
 use hidapi::{HidApi, HidDevice};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -39,7 +40,7 @@ fn poll_once(dev: &HidDevice) -> Result<Poll, String> {
     })
 }
 
-pub fn run(mut out: Output, stop: Arc<AtomicBool>, paused: Arc<AtomicBool>) {
+pub fn run(mut out: Output, stop: Arc<AtomicBool>, paused: Arc<AtomicBool>, steam: Arc<State>) {
     let mut was_paused = false;
     while !stop.load(Ordering::Relaxed) {
         let dev = match open() {
@@ -56,6 +57,7 @@ pub fn run(mut out: Output, stop: Arc<AtomicBool>, paused: Arc<AtomicBool>) {
                     out.release_all();
                     was_paused = true;
                 }
+                steam.route(Paddles::default());
                 std::thread::sleep(Duration::from_millis(50));
                 continue;
             }
@@ -64,7 +66,7 @@ pub fn run(mut out: Output, stop: Arc<AtomicBool>, paused: Arc<AtomicBool>) {
                 Ok(Poll::Reply(b)) => {
                     timeouts = 0;
                     if let Some(p) = parse_reply(&b) {
-                        out.apply(p);
+                        out.apply(steam.route(p));
                     }
                 }
                 Ok(Poll::Ignored) => {}
@@ -79,6 +81,7 @@ pub fn run(mut out: Output, stop: Arc<AtomicBool>, paused: Arc<AtomicBool>) {
             std::thread::sleep(Duration::from_millis(4));
         }
         out.release_all();
+        steam.lost();
         drop(dev);
         std::thread::sleep(Duration::from_secs(1));
     }

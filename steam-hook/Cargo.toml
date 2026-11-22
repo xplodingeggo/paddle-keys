@@ -1,0 +1,14 @@
+[package]
+name = "paddle-keys-steam"
+version = "0.2.0"
+edition = "2024"
+license = "MIT"
+description = "Hook DLL loaded into steam.exe that presents the 8BitDo Ultimate 2 to Steam Input as an Xbox Elite 2"
+
+[lib]
+name = "paddle_keys_steam"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+minhook = "0.9.0"
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading"] }
